@@ -1,1 +1,2 @@
-# cis568-threejs
+# CIS 568 Three.js Project
+### Carolina Zheng
