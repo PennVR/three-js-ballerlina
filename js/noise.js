@@ -72,17 +72,14 @@ var grad = function (hash, x, y, z) {
   return ((h & 1) == 0 ? u : -u) + ((h & 2) == 0 ? v : -v);
 }
 
-var perlin = function (x, y, z) {
+var perlin = function (x, y) {
 	var X = Math.floor(x) & 255;
 	var Y = Math.floor(y) & 255;
-	var Z = Math.floor(z) & 255;
 	x -= Math.floor(x);
 	y -= Math.floor(y);
-	z -= Math.floor(z);
 
 	var u = fade(x);
 	var v = fade(y);
-	var w = fade(z);
 
 	// var AA = perm[X] + Y;
 	// var AB = perm[X+1] + Y;	
@@ -90,10 +87,10 @@ var perlin = function (x, y, z) {
 	// var BB = perm[X+1] + Y + 1;
 	var A = perm[X]+Y;
 	var B = perm[X+1]+Y;
-	var AA = perm[A]+Z;
-	var BA = perm[B]+Z;
-	var AB = perm[A+1]+Z;
-	var BB = perm[B+1]+Z;
+	var AA = perm[A];
+	var BA = perm[B];
+	var AB = perm[A+1];
+	var BB = perm[B+1];
 
 	// var n00 = grad(perm[AA], x, y);
 	// var n01 = grad(perm[AB], x - 1, y);
@@ -104,14 +101,10 @@ var perlin = function (x, y, z) {
 	// var ix1 = lerp(n10, n11, u);
 	// var result = lerp(ix0, ix1, v);
 	// return result;
-      return lerp(w, lerp(v, lerp(u, grad(perm[AA  ], x  , y  , z   ),  // AND ADD
-                                     grad(perm[BA  ], x-1, y  , z   )), // BLENDED
-                             lerp(u, grad(perm[AB  ], x  , y-1, z   ),  // RESULTS
-                                     grad(perm[BB  ], x-1, y-1, z   ))),// FROM  8
-                     lerp(v, lerp(u, grad(perm[AA+1], x  , y  , z-1 ),  // CORNERS
-                                     grad(perm[BA+1], x-1, y  , z-1 )), // OF CUBE
-                             lerp(u, grad(perm[AB+1], x  , y-1, z-1 ),
-                                     grad(perm[BB+1], x-1, y-1, z-1 ))));
+      return lerp(v, lerp(u, grad(perm[AA  ], x  , y  , 0   ),  // AND ADD
+                             grad(perm[BA  ], x-1, y  , 0   )), // BLENDED
+                     lerp(u, grad(perm[AB  ], x  , y-1, 0   ),  // RESULTS
+                             grad(perm[BB  ], x-1, y-1, 0   )));// FROM  8
 }
 
 // var noise = generateNoise(100, 100, 50);
