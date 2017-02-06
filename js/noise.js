@@ -27,7 +27,8 @@ var generateNoise = function (width, height, seedValue) {
 			}
 			var scaledX = x * NORMALIZE / width;
 			var scaledY = y * NORMALIZE / height;
-			noise[y][x] = perlin(scaledX, scaledY);
+			// debugger;
+			noise[y][x] = perlin(scaledX, scaledY, 0);
 		}
 	}
 	return noise;
@@ -53,39 +54,64 @@ var fade = function (t) {
     return t * t * t * (t * (t * 6 - 15) + 10);
 }
 
-var lerp = function (a, b, t) {
-	return (1 - t) * a + t * b;
+// var lerp = function (a, b, t) {
+// 	return (1 - t) * a + t * b;
+// }
+
+var lerp = function (t, a, b) {
+	return a + t * (b - a);
 }
 
-var grad = function (hash, x, y) {
-	var h = hash & 15;
-	return ((h & 1) == 0 ? x : -1 * x +
-		    (h & 2) == 0 ? y : -1 * y);
+var grad = function (hash, x, y, z) {
+	// var h = hash & 15;
+	// return ((h & 1) == 0 ? x : -1 * x +
+	// 	    (h & 2) == 0 ? y : -1 * y);
+  var h = hash & 15;                      // CONVERT LO 4 BITS OF HASH CODE
+  var u = h < 8 ? x : y;                // INTO 12 GRADIENT DIRECTIONS.
+  var v = h < 4 ? y : h == 12 || h == 14 ? x : z;
+  return ((h & 1) == 0 ? u : -u) + ((h & 2) == 0 ? v : -v);
 }
 
-var perlin = function (x, y) {
+var perlin = function (x, y, z) {
 	var X = Math.floor(x) & 255;
 	var Y = Math.floor(y) & 255;
+	var Z = Math.floor(z) & 255;
 	x -= Math.floor(x);
 	y -= Math.floor(y);
+	z -= Math.floor(z);
 
 	var u = fade(x);
 	var v = fade(y);
+	var w = fade(z);
 
-	var AA = perm[X] + Y;
-	var AB = perm[X+1] + Y;	
-	var BA = perm[X] + Y + 1;
-	var BB = perm[X+1] + Y + 1;
+	// var AA = perm[X] + Y;
+	// var AB = perm[X+1] + Y;	
+	// var BA = perm[X] + Y + 1;
+	// var BB = perm[X+1] + Y + 1;
+	var A = perm[X]+Y;
+	var B = perm[X+1]+Y;
+	var AA = perm[A]+Z;
+	var BA = perm[B]+Z;
+	var AB = perm[A+1]+Z;
+	var BB = perm[B+1]+Z;
 
-	var n00 = grad(perm[AA], x, y);
-	var n01 = grad(perm[AB], x - 1, y);
-	var n10 = grad(perm[BA], x, y - 1);
-	var n11 = grad(perm[BB], x - 1, y - 1);
+	// var n00 = grad(perm[AA], x, y);
+	// var n01 = grad(perm[AB], x - 1, y);
+	// var n10 = grad(perm[BA], x, y - 1);
+	// var n11 = grad(perm[BB], x - 1, y - 1);
 
-	var ix0 = lerp(n00, n01, u);
-	var ix1 = lerp(n10, n11, u);
-	var result = lerp(ix0, ix1, v);
-	return result;
+	// var ix0 = lerp(n00, n01, u);
+	// var ix1 = lerp(n10, n11, u);
+	// var result = lerp(ix0, ix1, v);
+	// return result;
+      return lerp(w, lerp(v, lerp(u, grad(perm[AA  ], x  , y  , z   ),  // AND ADD
+                                     grad(perm[BA  ], x-1, y  , z   )), // BLENDED
+                             lerp(u, grad(perm[AB  ], x  , y-1, z   ),  // RESULTS
+                                     grad(perm[BB  ], x-1, y-1, z   ))),// FROM  8
+                     lerp(v, lerp(u, grad(perm[AA+1], x  , y  , z-1 ),  // CORNERS
+                                     grad(perm[BA+1], x-1, y  , z-1 )), // OF CUBE
+                             lerp(u, grad(perm[AB+1], x  , y-1, z-1 ),
+                                     grad(perm[BB+1], x-1, y-1, z-1 ))));
 }
 
 // var noise = generateNoise(100, 100, 50);
