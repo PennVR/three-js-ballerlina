@@ -1,24 +1,43 @@
 // User is sitting on a ski lift that's passing through some mountains
 var scene, camera, renderer, cube;
 var fireworks = [];
+var snow;
 var ROTATION = 0.05;
 var SEED = Math.floor(Math.random() * 1000);
 var FIREWORK_Y = 70;
 var PLANE_DIM = 1000;
 var textureLoader = new THREE.TextureLoader();
 
+var effect, controls;
+
 var init = function () {
     var geometry, material;
 	scene = new THREE.Scene();
 
+    renderer = new THREE.WebGLRenderer();
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.setClearColor(0x404040);
+    document.body.appendChild(renderer.domElement);
+
+    controls = new THREE.VRControls(camera);
+    effect = new THREE.VREffect(renderer);
+
+
+    if (navigator.getVRDisplays) {
+        navigator.getVRDisplays()
+            .then(function (displays) {
+                effect.setVRDisplay(displays[0]);
+                controls.setVRDisplay(displays[0]);
+            })
+            .catch(function () {
+                // no displays
+            });
+        document.body.appendChild(WEBVR.getButton(effect));
+    }
+
 	camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 10000);
 	camera.position.set(0, 50, 0);
 	camera.up = new THREE.Vector3(0, 1, 0);
-
-	renderer = new THREE.WebGLRenderer();
-	renderer.setSize(window.innerWidth, window.innerHeight);
-	renderer.setClearColor(0x404040);
-	document.body.appendChild(renderer.domElement);
 
 	var light1 = new THREE.DirectionalLight(0xffffff, 0.8);
 	light1.position.set(10, 80, 10);
@@ -34,7 +53,10 @@ var init = function () {
 	var vertices = geometry.vertices;
 	var faces = geometry.faces;
 
-	material = new THREE.MeshBasicMaterial({ side: THREE.BackSide, color: 0xe5efff });
+	material = new THREE.MeshBasicMaterial({
+        side: THREE.BackSide,
+        //color: 0x28426b,
+        map: textureLoader.load('assets/images/azure-gradient.svg') });
 	var sky = new THREE.Mesh(geometry, material);
 	scene.add(sky);
 
@@ -64,6 +86,23 @@ var init = function () {
 
 	//camera.lookAt(cube.position);
 	//camera.matrixWorldNeedsUpdate = true;
+
+    // Snow
+    var flakes = new THREE.Geometry();
+    for (var i = 0; i < 1000; i++) {
+        var flake = new THREE.Vector3(Math.random() * 1000 - 500, Math.random() * 80, -20);
+        flake.velocity = new THREE.Vector3(Math.random() / 10, -0.1, 0);
+        flakes.vertices.push(flake);
+    }
+    var snowMaterial = new THREE.PointsMaterial({
+        size: 2,
+        map: textureLoader.load("assets/images/snow.png"),
+        blending: THREE.AdditiveBlending,
+        transparent: true,
+        color : 0x222222
+    });
+    snow = new THREE.Points(flakes, snowMaterial);
+    scene.add(snow);
 }
 
 var shouldCreateFirework = function () {
@@ -79,9 +118,7 @@ var Firework = function (x, y, z) {
     this.x = x;
     this.z = z;
 	this.geometry = new THREE.CylinderGeometry(0.3, 0.3, 3);
-	this.material = new THREE.MeshBasicMaterial({ color: 0xf9c6bd });
-    this.material.transparent = true;
-    this.material.opacity = 0.5;
+	this.material = new THREE.MeshLambertMaterial({ color: 0xf9c6bd, emissive: 0xffffff, emissiveIntensity: 0.5 });
 	this.mesh = new THREE.Mesh(this.geometry, this.material);
 	this.mesh.position.set(x, y, z);
     // this.light = new THREE.PointLight(0xff0000, 10, 8);
@@ -128,14 +165,15 @@ Firework.prototype.detonateFirework = function () {
         map: textureLoader.load("assets/images/particle.png"),
         blending: THREE.AdditiveBlending,
         transparent: true,
-        color : 0xff0000
+        color : 0xbb0000
     });
     this.particles = new THREE.Points(sparks, sparkMaterial);
     scene.add(this.particles);
 }
 
 var render = function () {
-    renderer.render(scene, camera);
+    controls.update();
+    effect.render(scene, camera);
 
     if (shouldCreateFirework()) {
     	makeFirework(0, 50, -50);
@@ -146,7 +184,18 @@ var render = function () {
     	fireworks[i].update();
     }
 
-    requestAnimationFrame(render);
+    for (var i = 0; i < snow.geometry.vertices.length; i++) {
+        var particle = snow.geometry.vertices[i];
+        particle.x += particle.velocity.x;
+        particle.y += particle.velocity.y;
+        particle.z += particle.velocity.z;
+        if (particle.y < 20) {
+            particle.y = 100 + Math.random() * 10;
+        }
+    }
+    snow.geometry.verticesNeedUpdate = true;
+
+    effect.requestAnimationFrame(render);
 }
 
 init();
