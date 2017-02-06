@@ -7,7 +7,9 @@ var SEED = Math.floor(Math.random() * 1000);
 var FIREWORK_Y = 180;
 var FIREWORK_SPEED = 0.8;
 var PLANE_DIM = 1000;
+var PLANE_HEIGHT = 100;
 var textureLoader = new THREE.TextureLoader();
+var sparkColors = [0xbb0000, 0xea6f23, 0xffe359, 0x482ce8, 0xbb0000];
 
 var effect, controls;
 
@@ -20,13 +22,11 @@ var init = function () {
     renderer.setClearColor(0x404040);
     document.body.appendChild(renderer.domElement);
 
-    camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 10000);
+    camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 20000);
     dolly = new THREE.Group();
-    dolly.position.set(0, 35, 300);
+    dolly.position.set(0, 100, 300);
     scene.add(dolly);
     dolly.add(camera);
-	//camera.position.set(0, 50, 0);
-	//camera.up = new THREE.Vector3(0, 1, 0);
 
     controls = new THREE.VRControls(camera);
     effect = new THREE.VREffect(renderer);
@@ -59,8 +59,8 @@ var init = function () {
 
 	material = new THREE.MeshBasicMaterial({
         side: THREE.BackSide,
-        color: 0x031b42,
-	    //map: textureLoader.load('assets/images/azure-gradient.svg')
+        //color: 0x031b42,
+	    map: textureLoader.load('assets/images/sunset-gradient.jpg')
 	});
 	var sky = new THREE.Mesh(geometry, material);
 	scene.add(sky);
@@ -73,29 +73,17 @@ var init = function () {
     for (var i = 0; i < geometry.vertices.length; i++) {
     	var y = Math.floor(i / NOISE_DIM);
     	var x = i - y * NOISE_DIM;
-    	geometry.vertices[i].y = 100 * Math.abs(noise[y][x]);
-    	//console.log(geometry.vertices[i]);
+    	geometry.vertices[i].y = PLANE_HEIGHT * Math.abs(noise[y][x]);
     }
 
     material = new THREE.MeshPhongMaterial({ shading: THREE.FlatShading });
     var plane = new THREE.Mesh(geometry, material);
     scene.add(plane);
 
-	geometry = new THREE.BoxGeometry(10, 10, 10);
-    geometry.rotateX(Math.PI / 4);
-    geometry.rotateY(Math.PI / 6);
-	material = new THREE.MeshLambertMaterial({ color: 0xff0000 });
-	cube = new THREE.Mesh(geometry, material);
-    cube.position.set(0, 50, -30);
-	//scene.add(cube);
-
-	//camera.lookAt(cube.position);
-	//camera.matrixWorldNeedsUpdate = true;
-
     // Snow
     var flakes = new THREE.Geometry();
     for (var i = 0; i < 2000; i++) {
-        var flake = new THREE.Vector3(Math.random() * 1000 - 500, Math.random() * 80, Math.random() * 1000 - 500);
+        var flake = new THREE.Vector3(Math.random() * PLANE_DIM - PLANE_DIM / 2, Math.random() * 200, Math.random() * PLANE_DIM - PLANE_DIM / 2);
         flake.velocity = new THREE.Vector3(Math.random() / 10 - 0.05, -0.15, Math.random() / 10 - 0.05);
         flakes.vertices.push(flake);
     }
@@ -167,11 +155,11 @@ Firework.prototype.detonateFirework = function () {
         sparks.vertices.push(spark);
     }
     var sparkMaterial = new THREE.PointsMaterial({
-        size: 1.5,
+        size: 2,
         map: textureLoader.load("assets/images/particle.png"),
         blending: THREE.AdditiveBlending,
         transparent: true,
-        color : 0xbb0000
+        color : sparkColors[Math.floor(Math.random() * sparkColors.length)]
     });
     this.particles = new THREE.Points(sparks, sparkMaterial);
     scene.add(this.particles);
@@ -180,16 +168,14 @@ Firework.prototype.detonateFirework = function () {
 var render = function () {
     controls.update();
     effect.render(scene, camera);
-    //dolly.position.x += 0.1;
     var oldX = dolly.position.x;
     var oldZ = dolly.position.z;
     dolly.position.x = Math.cos(THETA) * oldX - Math.sin(THETA) * oldZ;
     dolly.position.z = Math.sin(THETA) * oldX + Math.cos(THETA) * oldZ;
-    //dolly.up = new THREE.Vector3(0, 1, 0);
     dolly.rotateY(-THETA);
 
     if (shouldCreateFirework()) {
-    	makeFirework(Math.random() * 1000 - 50, 50, Math.random() * 1000 - 500);
+    	makeFirework(Math.random() * PLANE_DIM - PLANE_DIM / 2, 50, Math.random() * PLANE_DIM - PLANE_DIM / 2);
     }
 
     // Draw fireworks
@@ -203,7 +189,7 @@ var render = function () {
         particle.y += particle.velocity.y;
         particle.z += particle.velocity.z;
         if (particle.y < 20) {
-            particle.y = 100 + Math.random() * 10;
+            particle.y = 200 + Math.random() * 10;
         }
     }
     snow.geometry.verticesNeedUpdate = true;
