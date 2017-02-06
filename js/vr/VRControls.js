@@ -128,7 +128,7 @@ THREE.VRControls = function ( object, onError ) {
 
 				} else {
 
-					object.position.setY( object.position.y + this.userHeight );
+					object.position.setY( 100 + object.position.y + this.userHeight );
 
 				}
 

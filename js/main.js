@@ -1,10 +1,11 @@
 // User is sitting on a ski lift that's passing through some mountains
-var scene, camera, renderer, cube;
+var scene, camera, renderer, cube, dolly;
 var fireworks = [];
 var snow;
-var ROTATION = 0.05;
+var THETA = Math.PI / 3000;
 var SEED = Math.floor(Math.random() * 1000);
-var FIREWORK_Y = 70;
+var FIREWORK_Y = 180;
+var FIREWORK_SPEED = 0.8;
 var PLANE_DIM = 1000;
 var textureLoader = new THREE.TextureLoader();
 
@@ -19,9 +20,16 @@ var init = function () {
     renderer.setClearColor(0x404040);
     document.body.appendChild(renderer.domElement);
 
+    camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 10000);
+    dolly = new THREE.Group();
+    dolly.position.set(0, 35, 300);
+    scene.add(dolly);
+    dolly.add(camera);
+	//camera.position.set(0, 50, 0);
+	//camera.up = new THREE.Vector3(0, 1, 0);
+
     controls = new THREE.VRControls(camera);
     effect = new THREE.VREffect(renderer);
-
 
     if (navigator.getVRDisplays) {
         navigator.getVRDisplays()
@@ -34,10 +42,6 @@ var init = function () {
             });
         document.body.appendChild(WEBVR.getButton(effect));
     }
-
-	camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 10000);
-	camera.position.set(0, 50, 0);
-	camera.up = new THREE.Vector3(0, 1, 0);
 
 	var light1 = new THREE.DirectionalLight(0xffffff, 0.8);
 	light1.position.set(10, 80, 10);
@@ -55,8 +59,9 @@ var init = function () {
 
 	material = new THREE.MeshBasicMaterial({
         side: THREE.BackSide,
-        //color: 0x28426b,
-        map: textureLoader.load('assets/images/azure-gradient.svg') });
+        color: 0x031b42,
+	    //map: textureLoader.load('assets/images/azure-gradient.svg')
+	});
 	var sky = new THREE.Mesh(geometry, material);
 	scene.add(sky);
 
@@ -89,9 +94,9 @@ var init = function () {
 
     // Snow
     var flakes = new THREE.Geometry();
-    for (var i = 0; i < 1000; i++) {
-        var flake = new THREE.Vector3(Math.random() * 1000 - 500, Math.random() * 80, -20);
-        flake.velocity = new THREE.Vector3(Math.random() / 10, -0.1, 0);
+    for (var i = 0; i < 2000; i++) {
+        var flake = new THREE.Vector3(Math.random() * 1000 - 500, Math.random() * 80, Math.random() * 1000 - 500);
+        flake.velocity = new THREE.Vector3(Math.random() / 10 - 0.05, -0.15, Math.random() / 10 - 0.05);
         flakes.vertices.push(flake);
     }
     var snowMaterial = new THREE.PointsMaterial({
@@ -106,7 +111,7 @@ var init = function () {
 }
 
 var shouldCreateFirework = function () {
-	return fireworks.length < 10 && Math.random() <= 0.01;
+	return fireworks.length < 10 && Math.random() <= 0.1;
 }
 
 var makeFirework = function (x, y, z) {
@@ -121,6 +126,7 @@ var Firework = function (x, y, z) {
 	this.material = new THREE.MeshLambertMaterial({ color: 0xf9c6bd, emissive: 0xffffff, emissiveIntensity: 0.5 });
 	this.mesh = new THREE.Mesh(this.geometry, this.material);
 	this.mesh.position.set(x, y, z);
+	this.maxY = FIREWORK_Y + Math.random() * 30 - 15;
     // this.light = new THREE.PointLight(0xff0000, 10, 8);
     // this.light.position.set(x, y, z);
 	this.particles = null;
@@ -129,9 +135,9 @@ var Firework = function (x, y, z) {
     //scene.add(this.light);
 }
 
-Firework.prototype.update = function () {
-	if (this.mesh.position.y < FIREWORK_Y) {
-		this.mesh.position.y += 0.3
+Firework.prototype.update = function (index) {
+	if (this.mesh.position.y < this.maxY) {
+	    this.mesh.position.y += FIREWORK_SPEED;
 	} else {
         if (!this.particles) {
             this.detonateFirework();
@@ -144,9 +150,9 @@ Firework.prototype.update = function () {
         }
         this.particles.geometry.verticesNeedUpdate = true;
         this.timeSinceDetonation += 1;
-        if (this.timeSinceDetonation > 30) {
+        if (this.timeSinceDetonation > 70) {
             scene.remove(this.particles);
-            fireworks.splice(this, 1);
+            fireworks.splice(index, 1);
         }
     }
 }
@@ -154,7 +160,7 @@ Firework.prototype.update = function () {
 Firework.prototype.detonateFirework = function () {
 	scene.remove(this.mesh);
     var sparks = new THREE.Geometry();
-    for (var i = 0; i < Math.random() * 1000; i++) {
+    for (var i = 0; i < Math.random() * 5000; i++) {
         var spark = new THREE.Vector3(this.x, FIREWORK_Y, this.z);
         spark.velocity = new THREE.Vector3(Math.random() - Math.random(),
                          Math.random() - Math.random(), Math.random() - Math.random());
@@ -174,14 +180,21 @@ Firework.prototype.detonateFirework = function () {
 var render = function () {
     controls.update();
     effect.render(scene, camera);
+    //dolly.position.x += 0.1;
+    var oldX = dolly.position.x;
+    var oldZ = dolly.position.z;
+    dolly.position.x = Math.cos(THETA) * oldX - Math.sin(THETA) * oldZ;
+    dolly.position.z = Math.sin(THETA) * oldX + Math.cos(THETA) * oldZ;
+    //dolly.up = new THREE.Vector3(0, 1, 0);
+    dolly.rotateY(-THETA);
 
     if (shouldCreateFirework()) {
-    	makeFirework(0, 50, -50);
+    	makeFirework(Math.random() * 1000 - 50, 50, Math.random() * 1000 - 500);
     }
 
     // Draw fireworks
     for (var i = 0; i < fireworks.length; i++) {
-    	fireworks[i].update();
+    	fireworks[i].update(i);
     }
 
     for (var i = 0; i < snow.geometry.vertices.length; i++) {
