@@ -1,17 +1,16 @@
-// User is sitting on a ski lift that's passing through some mountains
-var scene, camera, renderer, cube, dolly;
+var scene, camera, renderer, dolly;
 var fireworks = [];
 var snow;
+var effect, controls;
+var textureLoader = new THREE.TextureLoader();
+
 var THETA = Math.PI / 3000;
 var SEED = Math.floor(Math.random() * 1000);
 var FIREWORK_Y = 180;
 var FIREWORK_SPEED = 0.8;
 var PLANE_DIM = 1000;
 var PLANE_HEIGHT = 100;
-var textureLoader = new THREE.TextureLoader();
-var sparkColors = [0xbb0000, 0xea6f23, 0xffe359, 0x482ce8, 0xbb0000];
-
-var effect, controls;
+var SPARK_COLORS = [0xbb0000, 0xea6f23, 0xffe359, 0x482ce8, 0xbb0000];
 
 var init = function () {
     var geometry, material;
@@ -52,18 +51,7 @@ var init = function () {
 	scene.add(light2);
 
 	// Sky
-	geometry = new THREE.SphereGeometry(10000);
-
-	var vertices = geometry.vertices;
-	var faces = geometry.faces;
-
-	material = new THREE.MeshBasicMaterial({
-        side: THREE.BackSide,
-        //color: 0x031b42,
-	    map: textureLoader.load('assets/images/sunset-gradient.jpg')
-	});
-	var sky = new THREE.Mesh(geometry, material);
-	scene.add(sky);
+    loadSkyBox();
 
 	// Perlin mountains
 	var NOISE_DIM = 100;
@@ -98,8 +86,42 @@ var init = function () {
     scene.add(snow);
 }
 
+var loadSkyBox = function () {
+    var materials = [
+        // createMaterial('assets/images/nebula/nebula-xpos.png'),
+        // createMaterial('assets/images/nebula/nebula-xneg.png'),
+        // createMaterial('assets/images/nebula/nebula-ypos.png'),
+        // createMaterial('assets/images/nebula/nebula-yneg.png'),
+        // createMaterial('assets/images/nebula/nebula-zpos.png'),
+        // createMaterial('assets/images/nebula/nebula-zneg.png')
+        // createMaterial('assets/images/darksea/darksea-xpos.jpg'),
+        // createMaterial('assets/images/darksea/darksea-xneg.jpg'),
+        // createMaterial('assets/images/darksea/darksea-ypos.jpg'),
+        // createMaterial('assets/images/darksea/darksea-yneg.jpg'),
+        // createMaterial('assets/images/darksea/darksea-zpos.jpg'),
+        // createMaterial('assets/images/darksea/darksea-zneg.jpg')
+        createMaterial('assets/images/clouds/clouds-xneg.png'),
+        createMaterial('assets/images/clouds/clouds-zpos.png'),
+        createMaterial('assets/images/clouds/clouds-ypos.png'),
+        createMaterial('assets/images/clouds/clouds-yneg.png'),
+        createMaterial('assets/images/clouds/clouds-xpos.png'),
+        createMaterial('assets/images/clouds/clouds-zneg.png')
+    ];
+    var mesh = new THREE.Mesh(new THREE.BoxGeometry(10000, 10000, 10000, 1, 1, 1), new THREE.MeshFaceMaterial(materials));
+    mesh.scale.set(-1, 1, 1);
+    scene.add(mesh);
+}
+
+var createMaterial = function (path) {
+    var texture = textureLoader.load(path);
+    var material = new THREE.MeshBasicMaterial({
+        map: texture
+    });
+    return material;
+}
+
 var shouldCreateFirework = function () {
-	return fireworks.length < 10 && Math.random() <= 0.1;
+	return fireworks.length < 6 && Math.random() <= 0.05;
 }
 
 var makeFirework = function (x, y, z) {
@@ -115,31 +137,27 @@ var Firework = function (x, y, z) {
 	this.mesh = new THREE.Mesh(this.geometry, this.material);
 	this.mesh.position.set(x, y, z);
 	this.maxY = FIREWORK_Y + Math.random() * 30 - 15;
-    // this.light = new THREE.PointLight(0xff0000, 10, 8);
-    // this.light.position.set(x, y, z);
-	this.particles = null;
+    this.spheres = null;
     this.timeSinceDetonation = 0;
     scene.add(this.mesh);
-    //scene.add(this.light);
 }
 
 Firework.prototype.update = function (index) {
 	if (this.mesh.position.y < this.maxY) {
 	    this.mesh.position.y += FIREWORK_SPEED;
 	} else {
-        if (!this.particles) {
+        if (!this.spheres) {
             this.detonateFirework();
         }
-        for (var i = 0; i < this.particles.geometry.vertices.length; i++) {
-            var particle = this.particles.geometry.vertices[i];
-            particle.x += particle.velocity.x;
-            particle.y += particle.velocity.y;
-            particle.z += particle.velocity.z;
+        for (var i = 0; i < this.spheres.length; i++) {
+            var sphere = this.spheres[i];
+            sphere.position.set(sphere.position.x + sphere.velocity.x, sphere.position.y + sphere.velocity.y, sphere.position.z + sphere.velocity.z);
         }
-        this.particles.geometry.verticesNeedUpdate = true;
         this.timeSinceDetonation += 1;
         if (this.timeSinceDetonation > 70) {
-            scene.remove(this.particles);
+            for (var i = 0; i < this.spheres.length; i++) {
+                scene.remove(this.spheres[i]);
+            }
             fireworks.splice(index, 1);
         }
     }
@@ -147,33 +165,35 @@ Firework.prototype.update = function (index) {
 
 Firework.prototype.detonateFirework = function () {
 	scene.remove(this.mesh);
-    var sparks = new THREE.Geometry();
-    for (var i = 0; i < Math.random() * 5000; i++) {
-        var spark = new THREE.Vector3(this.x, FIREWORK_Y, this.z);
-        spark.velocity = new THREE.Vector3(Math.random() - Math.random(),
+    this.spheres = [];
+    for (var i = 0; i < Math.random() * 2000; i++) {
+        var sphere = new THREE.SphereGeometry(0.7);
+        var sphereMaterial = new THREE.MeshPhongMaterial({
+            color : SPARK_COLORS[Math.floor(Math.random() * SPARK_COLORS.length)],
+            emissive: 0xffffff,
+            emissiveIntensity: 0.4
+        });
+        var sphereMesh = new THREE.Mesh(sphere, sphereMaterial);
+        sphereMesh.position.set(this.x, FIREWORK_Y, this.z);
+        sphereMesh.velocity = new THREE.Vector3(Math.random() - Math.random(),
                          Math.random() - Math.random(), Math.random() - Math.random());
-        sparks.vertices.push(spark);
+        this.spheres.push(sphereMesh);
+        scene.add(sphereMesh);
     }
-    var sparkMaterial = new THREE.PointsMaterial({
-        size: 2,
-        map: textureLoader.load("assets/images/particle.png"),
-        blending: THREE.AdditiveBlending,
-        transparent: true,
-        color : sparkColors[Math.floor(Math.random() * sparkColors.length)]
-    });
-    this.particles = new THREE.Points(sparks, sparkMaterial);
-    scene.add(this.particles);
 }
 
 var render = function () {
     controls.update();
     effect.render(scene, camera);
+
+    // Move camera in circle
     var oldX = dolly.position.x;
     var oldZ = dolly.position.z;
     dolly.position.x = Math.cos(THETA) * oldX - Math.sin(THETA) * oldZ;
     dolly.position.z = Math.sin(THETA) * oldX + Math.cos(THETA) * oldZ;
     dolly.rotateY(-THETA);
 
+    // Create new fireworks
     if (shouldCreateFirework()) {
     	makeFirework(Math.random() * PLANE_DIM - PLANE_DIM / 2, 50, Math.random() * PLANE_DIM - PLANE_DIM / 2);
     }
@@ -183,6 +203,7 @@ var render = function () {
     	fireworks[i].update(i);
     }
 
+    // Draw snow
     for (var i = 0; i < snow.geometry.vertices.length; i++) {
         var particle = snow.geometry.vertices[i];
         particle.x += particle.velocity.x;
