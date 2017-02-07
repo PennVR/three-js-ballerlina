@@ -6,6 +6,7 @@ var textureLoader = new THREE.TextureLoader();
 
 var THETA = Math.PI / 3000;
 var SEED = Math.floor(Math.random() * 1000);
+var NOISE_DIM = 100;
 var FIREWORK_Y = 180;
 var FIREWORK_SPEED = 0.8;
 var PLANE_DIM = 1000;
@@ -13,18 +14,15 @@ var PLANE_HEIGHT = 100;
 var SPARK_COLORS = [0xbb0000, 0xea6f23, 0xffe359, 0x482ce8, 0xbb0000];
 
 var init = function () {
-    var geometry, material;
 	scene = new THREE.Scene();
 
     renderer = new THREE.WebGLRenderer();
     renderer.setSize(window.innerWidth, window.innerHeight);
-    renderer.setClearColor(0x404040);
     document.body.appendChild(renderer.domElement);
 
     camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 20000);
     dolly = new THREE.Group();
     dolly.position.set(0, 100, 300);
-    dolly.rotateY(-3 * Math.PI / 4);
     scene.add(dolly);
     dolly.add(camera);
 
@@ -54,26 +52,31 @@ var init = function () {
 	// Sky
     loadSkyBox();
 
-	// Perlin mountains
-	var NOISE_DIM = 100;
+	// Perlin hills
 	var noise = generateNoise(NOISE_DIM, NOISE_DIM, SEED);
-    geometry = new THREE.PlaneGeometry(PLANE_DIM, PLANE_DIM, NOISE_DIM - 1, NOISE_DIM - 1);
-    geometry.rotateX(-1 * Math.PI / 2);
-    for (var i = 0; i < geometry.vertices.length; i++) {
+    var planeGeometry = new THREE.PlaneGeometry(PLANE_DIM, PLANE_DIM, NOISE_DIM - 1, NOISE_DIM - 1);
+    planeGeometry.rotateX(-1 * Math.PI / 2);
+    for (var i = 0; i < planeGeometry.vertices.length; i++) {
     	var y = Math.floor(i / NOISE_DIM);
     	var x = i - y * NOISE_DIM;
-    	geometry.vertices[i].y = PLANE_HEIGHT * Math.abs(noise[y][x]);
+    	planeGeometry.vertices[i].y = PLANE_HEIGHT * Math.abs(noise[y][x]);
     }
 
-    material = new THREE.MeshPhongMaterial({ shading: THREE.FlatShading });
-    var plane = new THREE.Mesh(geometry, material);
+    var planeMaterial = new THREE.MeshPhongMaterial({
+        shading: THREE.FlatShading,
+        color: 0xe0cec7 });
+    var plane = new THREE.Mesh(planeGeometry, planeMaterial);
     scene.add(plane);
 
     // Snow
     var flakes = new THREE.Geometry();
     for (var i = 0; i < 2000; i++) {
-        var flake = new THREE.Vector3(Math.random() * PLANE_DIM - PLANE_DIM / 2, Math.random() * 200, Math.random() * PLANE_DIM - PLANE_DIM / 2);
-        flake.velocity = new THREE.Vector3(Math.random() / 10 - 0.05, -0.15, Math.random() / 10 - 0.05);
+        var flake = new THREE.Vector3(Math.random() * PLANE_DIM - PLANE_DIM / 2,
+                                      Math.random() * 200,
+                                      Math.random() * PLANE_DIM - PLANE_DIM / 2);
+        flake.velocity = new THREE.Vector3(Math.random() / 10 - 0.05,
+                                           -0.15,
+                                           Math.random() / 10 - 0.05);
         flakes.vertices.push(flake);
     }
     var snowMaterial = new THREE.PointsMaterial({
@@ -89,26 +92,15 @@ var init = function () {
 
 var loadSkyBox = function () {
     var materials = [
-        // createMaterial('assets/images/nebula/nebula-xpos.png'),
-        // createMaterial('assets/images/nebula/nebula-xneg.png'),
-        // createMaterial('assets/images/nebula/nebula-ypos.png'),
-        // createMaterial('assets/images/nebula/nebula-yneg.png'),
-        // createMaterial('assets/images/nebula/nebula-zpos.png'),
-        // createMaterial('assets/images/nebula/nebula-zneg.png')
-        // createMaterial('assets/images/darksea/darksea-xpos.jpg'),
-        // createMaterial('assets/images/darksea/darksea-xneg.jpg'),
-        // createMaterial('assets/images/darksea/darksea-ypos.jpg'),
-        // createMaterial('assets/images/darksea/darksea-yneg.jpg'),
-        // createMaterial('assets/images/darksea/darksea-zpos.jpg'),
-        // createMaterial('assets/images/darksea/darksea-zneg.jpg')
-        createMaterial('assets/images/clouds/clouds-xneg.png'),
-        createMaterial('assets/images/clouds/clouds-zpos.png'),
-        createMaterial('assets/images/clouds/clouds-ypos.png'),
-        createMaterial('assets/images/clouds/clouds-yneg.png'),
-        createMaterial('assets/images/clouds/clouds-xpos.png'),
-        createMaterial('assets/images/clouds/clouds-zneg.png')
+        createMaterial('assets/images/darksea/darksea-xpos.jpg'),
+        createMaterial('assets/images/darksea/darksea-xneg.jpg'),
+        createMaterial('assets/images/darksea/darksea-ypos.jpg'),
+        createMaterial('assets/images/darksea/darksea-yneg.jpg'),
+        createMaterial('assets/images/darksea/darksea-zpos.jpg'),
+        createMaterial('assets/images/darksea/darksea-zneg.jpg')
     ];
-    var mesh = new THREE.Mesh(new THREE.BoxGeometry(10000, 10000, 10000, 1, 1, 1), new THREE.MeshFaceMaterial(materials));
+    var mesh = new THREE.Mesh(new THREE.BoxGeometry(10000, 10000, 10000, 1, 1, 1),
+                              new THREE.MultiMaterial(materials));
     mesh.scale.set(-1, 1, 1);
     scene.add(mesh);
 }
@@ -130,59 +122,6 @@ var makeFirework = function (x, y, z) {
 	fireworks.push(firework);
 }
 
-var Firework = function (x, y, z) {
-    this.x = x;
-    this.z = z;
-	this.geometry = new THREE.CylinderGeometry(0.3, 0.3, 3);
-	this.material = new THREE.MeshLambertMaterial({ color: 0xf9c6bd, emissive: 0xffffff, emissiveIntensity: 0.5 });
-	this.mesh = new THREE.Mesh(this.geometry, this.material);
-	this.mesh.position.set(x, y, z);
-	this.maxY = FIREWORK_Y + Math.random() * 30 - 15;
-    this.spheres = null;
-    this.timeSinceDetonation = 0;
-    scene.add(this.mesh);
-}
-
-Firework.prototype.update = function (index) {
-	if (this.mesh.position.y < this.maxY) {
-	    this.mesh.position.y += FIREWORK_SPEED;
-	} else {
-        if (!this.spheres) {
-            this.detonateFirework();
-        }
-        for (var i = 0; i < this.spheres.length; i++) {
-            var sphere = this.spheres[i];
-            sphere.position.set(sphere.position.x + sphere.velocity.x, sphere.position.y + sphere.velocity.y, sphere.position.z + sphere.velocity.z);
-        }
-        this.timeSinceDetonation += 1;
-        if (this.timeSinceDetonation > 70) {
-            for (var i = 0; i < this.spheres.length; i++) {
-                scene.remove(this.spheres[i]);
-            }
-            fireworks.splice(index, 1);
-        }
-    }
-}
-
-Firework.prototype.detonateFirework = function () {
-	scene.remove(this.mesh);
-    this.spheres = [];
-    for (var i = 0; i < Math.random() * 2000; i++) {
-        var sphere = new THREE.SphereGeometry(0.7);
-        var sphereMaterial = new THREE.MeshPhongMaterial({
-            color : SPARK_COLORS[Math.floor(Math.random() * SPARK_COLORS.length)],
-            emissive: 0xffffff,
-            emissiveIntensity: 0.4
-        });
-        var sphereMesh = new THREE.Mesh(sphere, sphereMaterial);
-        sphereMesh.position.set(this.x, FIREWORK_Y, this.z);
-        sphereMesh.velocity = new THREE.Vector3(Math.random() - Math.random(),
-                         Math.random() - Math.random(), Math.random() - Math.random());
-        this.spheres.push(sphereMesh);
-        scene.add(sphereMesh);
-    }
-}
-
 var render = function () {
     controls.update();
     effect.render(scene, camera);
@@ -196,7 +135,8 @@ var render = function () {
 
     // Create new fireworks
     if (shouldCreateFirework()) {
-    	makeFirework(Math.random() * PLANE_DIM - PLANE_DIM / 2, 50, Math.random() * PLANE_DIM - PLANE_DIM / 2);
+    	makeFirework(Math.random() * PLANE_DIM - PLANE_DIM / 2, 50,
+                     Math.random() * PLANE_DIM - PLANE_DIM / 2);
     }
 
     // Draw fireworks

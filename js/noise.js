@@ -1,3 +1,6 @@
+// Adapted from Ken Perlin's improved perlin noise:
+// http://mrl.nyu.edu/~perlin/noise/
+
 var p = [151,160,137,91,90,15,					
 		131,13,201,95,96,53,194,233,7,225,140,36,103,30,69,142,8,99,37,240,21,10,23,
 		190, 6,148,247,120,234,75,0,26,197,62,94,252,219,203,117,35,11,32,57,177,33,
@@ -27,8 +30,7 @@ var generateNoise = function (width, height, seedValue) {
 			}
 			var scaledX = x * NORMALIZE / width;
 			var scaledY = y * NORMALIZE / height;
-			// debugger;
-			noise[y][x] = perlin(scaledX, scaledY, 0);
+			noise[y][x] = perlin(scaledX, scaledY);
 		}
 	}
 	return noise;
@@ -54,21 +56,14 @@ var fade = function (t) {
     return t * t * t * (t * (t * 6 - 15) + 10);
 }
 
-// var lerp = function (a, b, t) {
-// 	return (1 - t) * a + t * b;
-// }
-
 var lerp = function (t, a, b) {
 	return a + t * (b - a);
 }
 
-var grad = function (hash, x, y, z) {
-	// var h = hash & 15;
-	// return ((h & 1) == 0 ? x : -1 * x +
-	// 	    (h & 2) == 0 ? y : -1 * y);
-  var h = hash & 15;                      // CONVERT LO 4 BITS OF HASH CODE
-  var u = h < 8 ? x : y;                // INTO 12 GRADIENT DIRECTIONS.
-  var v = h < 4 ? y : h == 12 || h == 14 ? x : z;
+var grad = function (hash, x, y) {
+  var h = hash & 15;
+  var u = h < 8 ? x : y;
+  var v = h < 4 ? y : h == 12 || h == 14 ? x : 0;
   return ((h & 1) == 0 ? u : -u) + ((h & 2) == 0 ? v : -v);
 }
 
@@ -81,10 +76,6 @@ var perlin = function (x, y) {
 	var u = fade(x);
 	var v = fade(y);
 
-	// var AA = perm[X] + Y;
-	// var AB = perm[X+1] + Y;	
-	// var BA = perm[X] + Y + 1;
-	// var BB = perm[X+1] + Y + 1;
 	var A = perm[X]+Y;
 	var B = perm[X+1]+Y;
 	var AA = perm[A];
@@ -92,20 +83,8 @@ var perlin = function (x, y) {
 	var AB = perm[A+1];
 	var BB = perm[B+1];
 
-	// var n00 = grad(perm[AA], x, y);
-	// var n01 = grad(perm[AB], x - 1, y);
-	// var n10 = grad(perm[BA], x, y - 1);
-	// var n11 = grad(perm[BB], x - 1, y - 1);
-
-	// var ix0 = lerp(n00, n01, u);
-	// var ix1 = lerp(n10, n11, u);
-	// var result = lerp(ix0, ix1, v);
-	// return result;
-      return lerp(v, lerp(u, grad(perm[AA  ], x  , y  , 0   ),  // AND ADD
-                             grad(perm[BA  ], x-1, y  , 0   )), // BLENDED
-                     lerp(u, grad(perm[AB  ], x  , y-1, 0   ),  // RESULTS
-                             grad(perm[BB  ], x-1, y-1, 0   )));// FROM  8
+	return lerp(v, lerp(u, grad(perm[AA], x, y),
+                           grad(perm[BA], x-1, y)),
+                   lerp(u, grad(perm[AB], x, y-1),
+                           grad(perm[BB], x-1, y-1)));
 }
-
-// var noise = generateNoise(100, 100, 50);
-// console.log(noise);

@@ -17,11 +17,8 @@ var drawNoise = function (noise) {
 		imgData.data[4*i+1] = color;
 		imgData.data[4*i+2] = color;
 		imgData.data[4*i+3] = 255;
-		//console.log(color);
 	}
-	console.log(imgData);
 	ctx.putImageData(imgData, 0, 0);
 }
 
 drawNoise(noise);
-//ctx.fillRect(0, 0, 100, 100);
