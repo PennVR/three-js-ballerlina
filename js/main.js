@@ -24,6 +24,7 @@ var init = function () {
     camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 20000);
     dolly = new THREE.Group();
     dolly.position.set(0, 100, 300);
+    dolly.rotateY(-3 * Math.PI / 4);
     scene.add(dolly);
     dolly.add(camera);
 
